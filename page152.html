@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Rebusrally 2024.09</title>
+<link rel="stylesheet" type="text/css" href="2024.09.css">
+<script src="d3.v3.min.js"></script>
+<script src="jquery-2.1.4.min.js"></script>
+<script>
+var maxLine = 0;
+var line = 0;
+var check = 0;
+
+
+$(function() {
+    $('html').keydown(function(event) {
+        if (event.which == 37 /* left */ || event.which == 49 /* ! */ ||
+        event.which == 33 /* PageUp, useful for clickers */) {
+            window.location = "page151.html";
+        }
+        else if (event.which == 39 /* right */ || event.which == 32 ||
+                 event.which == 50 /* " */ || event.which == 34 /* PageDown, useful for clickers */) {
+            next(152, 0);
+        }
+    });
+
+    $('.header').click(function(event) {
+        next(152, 0);
+    });
+
+});
+
+function next(nr, maxLine)
+{
+    maxLine = 0;
+    if (maxLine > 0) {
+        line += 1;
+        if (line >= maxLine) {
+            window.location = "page" + (nr + 1) + ".html";
+        }
+        else {
+            $('div.rebus' + line).css("opacity", 1);
+            if (!check) {
+                $.get('currentline.php', {nr: nr, line: line});
+            }
+        }
+    }
+    else {
+        line = 0;
+        window.location = "page" + (nr + 1) + ".html";
+    }
+}
+</script>
+</head>
+<body>
+
+<div class=header>
+  <div class=headertitle>
+    <a class=rub1>Slutresultat</a>
+  </div>
+    <div class=headerlogo>
+    <img src="logga.png" class=logo alt=logo>
+  </div>
+    </div>
+</div>
+
+<div class=headerline></div>
+
+
+<div class=indexlinks>
+  <a class=rub3 href=page151.html >föregående</a>
+  <a> | </a>
+  <a href="#" onclick="next(152, 0)" class=rub3>nästa</a>
+</div>
+
+<div class=content><svg class='chart'></svg>
+<script>
+var data = [{"name":"Viktat Projektivt Rum","number":1,"members":9,"flair":"","number_class":"team1","points":202,"disabled":false,"index":0},{"name":"Enar \u00c5kered","number":2,"members":9,"flair":"<free>","number_class":"team2","points":37,"disabled":false,"index":1,"flair_img":"free.png"},{"name":"Senaste Laget","number":3,"members":8,"flair":"","number_class":"team3","points":392,"disabled":false,"index":2},{"name":"Ibsens Kusiner","number":6,"members":9,"flair":"","number_class":"team6","points":54,"disabled":false,"index":3},{"name":"S\u00e5 att s\u00e4ga","number":7,"members":3,"flair":"<small>","number_class":"team7","points":130,"disabled":false,"index":4,"flair_img":"small.png"},{"name":"Katlas Kompisar","number":8,"members":9,"flair":"<free>","number_class":"team8","points":-25,"disabled":false,"index":5,"flair_img":"free.png"},{"name":"\u00d6set Luhring","number":10,"members":8,"flair":"<legends>","number_class":"team10","points":416,"disabled":false,"index":6,"flair_img":"legends.png"},{"name":"S\u00f6tg\u00f6tarna","number":11,"members":7,"flair":"","number_class":"team11","points":141,"disabled":false,"index":7},{"name":"Buzzin","number":12,"members":9,"flair":"<blue>","number_class":"team12","points":324,"disabled":false,"index":8,"flair_img":"blue.png"},{"name":"RRL f\u00f6r Claes Elfsberg","number":13,"members":9,"flair":"","number_class":"team13","points":482,"disabled":false,"index":9},{"name":"Tegalreden","number":15,"members":5,"flair":"<small>","number_class":"team15","points":730,"disabled":false,"index":10,"flair_img":"small.png"},{"name":"Rebussen","number":16,"members":9,"flair":"","number_class":"team16","points":584,"disabled":false,"index":11},{"name":"Ingenj\u00f6rer p\u00e5 gr\u00e4nsen","number":42,"members":8,"flair":"<blue>","number_class":"team42","points":222,"disabled":false,"index":12,"flair_img":"blue.png"},{"name":"Trial & Error","number":88,"members":9,"flair":"","number_class":"team88","points":249,"disabled":false,"index":13},{"name":"Webus Express","number":828,"members":9,"flair":"<free>","number_class":"team828","points":-4,"disabled":false,"index":14,"flair_img":"free.png"},{"name":"KG Racing","number":17,"members":9,"flair":"<smallblue>","number_class":"team17","points":539,"disabled":false,"index":15,"flair_img":"smallblue.png"}];
+var prevdata = [];
+var sort = 1;
+var max = 0;
+var screenWidth = 1024;
+
+var graphWidth = screenWidth * 0.75;
+var textWidth = screenWidth * 0.25;
+var barHeight = 30;
+var width = graphWidth + textWidth;
+var height = barHeight * data.length + 30;
+
+function ƒ(name) {
+  var v, params = Array.prototype.slice.call(arguments, 1);
+  return function(o) {
+    return (typeof(v = o[name]) === 'function' ? v.apply(o, params) : v );
+  };
+}
+
+function sign(x) {
+    return (x >= 0) ? 1 : -1;
+}
+
+function bar_width(p) {
+    return Math.abs(x(p) - x(0));
+}
+
+function text_pos(p) {
+    // Guess text_width, should use getBBox()
+    var text_width = 9 * p.toString().length;
+    // Try to move text outside of graph bars if it does not fit
+    var off = p < 0 ? -6 : -3;
+    var offset = -3 * sign(p) * ((bar_width(p) > text_width) ? 1 : off);
+    if (p >= 0) {
+        offset -= text_width;
+    }
+    var maxRight = width - textWidth - 16;
+    if (x(p) + offset > maxRight) {
+        return maxRight;
+    }
+    return x(p) + offset;
+}
+
+var x = d3.scale.linear()
+    .domain([Math.min(0, d3.min(data, ƒ('points')),
+                      d3.min(prevdata, ƒ('points')) || Infinity,
+                      (max < 0 ? max : Infinity)),
+             Math.max(0, d3.max(data, ƒ('points')),
+                      d3.max(prevdata, ƒ('points')) || -Infinity,
+                      (max > 0 ? max : -Infinity))])
+    .range([0, graphWidth]);
+
+var chart = d3.select(".chart")
+    .attr("width", width)
+    .attr("height", height);
+
+function update(data) {
+
+  // JOIN
+  var row = chart.selectAll("g.row").data(data, ƒ('index'));
+
+  // UPDATE
+
+  if (sort) {
+    row.sort(function(a, b) { return d3.ascending(a.points, b.points); })
+      .transition()
+        .duration(function(d, i) { return 1000; })
+        .delay(function(d, i) { return 1000 + i * 100; })
+        .attr("transform", function(d, i) { return "translate(0, " + i * barHeight + ")"; });
+  }
+  else {
+    row.attr("transform", function(d, i) { return "translate(0, " + i * barHeight + ")"; });
+  }
+
+  row.selectAll(".graph_bar").data(data, ƒ('index'))
+    .transition()
+      .duration(1000)
+      .attr("x", function(d) { return d.points < 0 ? x(d.points) : x(0); })
+      .attr("width", function(d) { return bar_width(d.points); });
+
+  row.selectAll("text.number").data(data, ƒ('index'))
+    .transition()
+      .duration(1000)
+      .tween("text", function(d) {
+        var i = d3.interpolateRound(parseInt(this.textContent), d.points);
+        return function(t) {
+          var num = i(t);
+          if (!isNaN(num)) {
+            this.textContent = num;
+          }
+        }
+      })
+      .attr("x", function(d) { return text_pos(d.points); });
+
+  // ENTER
+  var bg_row = row.enter().append("g");
+  bg_row.attr("transform", function(d, i) { return "translate(0, " + i * barHeight + ")"; });
+  bg_row.append("rect")
+   .attr("width", width)
+   .attr("height", barHeight - 1)
+   .attr("class", function(d, i) { return (i + 1) & 1 ? "graph_odd" : "graph_even" });
+
+  var enter_row = row.enter().append("g").classed("row", true);
+  if (sort) {
+    enter_row.sort(function(a, b) { return d3.ascending(a.points, b.points); })
+  }
+  enter_row.attr("transform", function(d, i) { return "translate(0, " + i * barHeight + ")"; });
+  
+  enter_row
+    .append("g")
+      .classed("desc", true);
+
+  var enter_graph =
+    enter_row
+      .append("g")
+        .classed("graph", true)
+        .attr("transform", "translate(" + textWidth + ",0)");
+
+  enter_graph
+    .append("rect")
+      .attr("x", x(0))
+      .attr("width", 0)
+      .attr("height", barHeight - 1)
+      .attr("class", "graph_bar")
+    .transition()
+      .duration(500)
+      .attr("x", function(d) { return d.points < 0 ? x(d.points) : x(0); })
+      .attr("width", function(d) { return bar_width(d.points); });
+
+  enter_graph
+    .append("text")
+      .classed("number", true)
+      .classed("disabled", ƒ('disabled'))
+      .style("fill-opacity", 0.0)
+      .attr("x", function(d) { return text_pos(0) + (d.points < 0 ? -16 : 0); })
+      .attr("y", barHeight / 2)
+      .attr("dy", ".35em")
+      .text(ƒ('points'))
+    .transition()
+      .duration(500)
+      .style("fill-opacity", 1.0)
+      .attr("x", function(d) { return text_pos(d.points); });
+
+  if (max != 0) {
+      chart.append("line")
+          .attr("class", "maxline")
+          .attr("x1", textWidth + x(max))
+          .attr("x2", textWidth + x(max))
+          .attr("y1", 0)
+          .attr("y2", height);
+      chart.append("text")
+          .attr("class", "maxline-text")
+          .attr("x", textWidth + x(max) + (max > 0 ? -10 : 10))
+          .attr("y", height - 10)
+          .attr("text-anchor", max > 0 ? "end" : "start")
+          .text("Max: " + max);
+  }
+
+
+  // ENTER+UPDATE
+
+  var desc = row.select(".desc");
+
+  desc
+    .append("text")
+      .attr("x", 5)
+      .attr("y", barHeight / 2)
+      .attr("dy", ".35em")
+      .classed("disabled", ƒ('disabled'))
+      .text(ƒ('number'));
+
+  desc
+    .append("image")
+      .attr("x", 30)
+      .attr("y", 0)
+      .attr("width", 20)
+      .attr("height", barHeight)
+      .attr("dy", ".35em")
+      .attr("xlink:href", ƒ('flair_img'));
+
+  desc
+    .append("text")
+      .attr("x", 60)
+      .attr("y", barHeight / 2)
+      .attr("dy", ".35em")
+      .attr("class", ƒ('number_class'))
+      .classed("disabled", ƒ('disabled'))
+      .text(ƒ('name'));
+
+  row.exit().remove();
+}
+
+if (prevdata.length > 0) {
+  update(prevdata);
+  setTimeout(function () { update(data); }, 1000);
+}
+else {
+  update(data);
+}
+
+</script></div>
+<div class=indexlinks>
+  <a class=rub3 href=page151.html>föregående</a>
+  <a> | </a>
+  <a href="#" onclick="next(152, 0)" class=rub3>nästa</a>
+</div>
+
+<div class=alllinks>
+<a class=rub4 href=page0.html>0</a>
+<a class=rub4 href=page1.html>1</a>
+<a class=rub4 href=page2.html>2</a>
+<a class=rub4 href=page3.html>3</a>
+<a class=rub4 href=page4.html>4</a>
+<a class=rub4 href=page5.html>5</a>
+<a class=rub4 href=page6.html>6</a>
+<a class=rub4 href=page7.html>7</a>
+<a class=rub4 href=page8.html>8</a>
+<a class=rub4 href=page9.html>9</a>
+<a class=rub4 href=page10.html>10</a>
+<a class=rub4 href=page11.html>11</a>
+<a class=rub4 href=page12.html>12</a>
+<a class=rub4 href=page13.html>13</a>
+<a class=rub4 href=page14.html>14</a>
+<a class=rub4 href=page15.html>15</a>
+<a class=rub4 href=page16.html>16</a>
+<a class=rub4 href=page17.html>17</a>
+<a class=rub4 href=page18.html>18</a>
+<a class=rub4 href=page19.html>19</a>
+<a class=rub4 href=page20.html>20</a>
+<a class=rub4 href=page21.html>21</a>
+<a class=rub4 href=page22.html>22</a>
+<a class=rub4 href=page23.html>23</a>
+<a class=rub4 href=page24.html>24</a>
+<a class=rub4 href=page25.html>25</a>
+<a class=rub4 href=page26.html>26</a>
+<a class=rub4 href=page27.html>27</a>
+<a class=rub4 href=page28.html>28</a>
+<a class=rub4 href=page29.html>29</a>
+<a class=rub4 href=page30.html>30</a>
+<a class=rub4 href=page31.html>31</a>
+<a class=rub4 href=page32.html>32</a>
+<a class=rub4 href=page33.html>33</a>
+<a class=rub4 href=page34.html>34</a>
+<a class=rub4 href=page35.html>35</a>
+<a class=rub4 href=page36.html>36</a>
+<a class=rub4 href=page37.html>37</a>
+<a class=rub4 href=page38.html>38</a>
+<a class=rub4 href=page39.html>39</a>
+<a class=rub4 href=page40.html>40</a>
+<a class=rub4 href=page41.html>41</a>
+<a class=rub4 href=page42.html>42</a>
+<a class=rub4 href=page43.html>43</a>
+<a class=rub4 href=page44.html>44</a>
+<a class=rub4 href=page45.html>45</a>
+<a class=rub4 href=page46.html>46</a>
+<a class=rub4 href=page47.html>47</a>
+<a class=rub4 href=page48.html>48</a>
+<a class=rub4 href=page49.html>49</a>
+<a class=rub4 href=page50.html>50</a>
+<a class=rub4 href=page51.html>51</a>
+<a class=rub4 href=page52.html>52</a>
+<a class=rub4 href=page53.html>53</a>
+<a class=rub4 href=page54.html>54</a>
+<a class=rub4 href=page55.html>55</a>
+<a class=rub4 href=page56.html>56</a>
+<a class=rub4 href=page57.html>57</a>
+<a class=rub4 href=page58.html>58</a>
+<a class=rub4 href=page59.html>59</a>
+<a class=rub4 href=page60.html>60</a>
+<a class=rub4 href=page61.html>61</a>
+<a class=rub4 href=page62.html>62</a>
+<a class=rub4 href=page63.html>63</a>
+<a class=rub4 href=page64.html>64</a>
+<a class=rub4 href=page65.html>65</a>
+<a class=rub4 href=page66.html>66</a>
+<a class=rub4 href=page67.html>67</a>
+<a class=rub4 href=page68.html>68</a>
+<a class=rub4 href=page69.html>69</a>
+<a class=rub4 href=page70.html>70</a>
+<a class=rub4 href=page71.html>71</a>
+<a class=rub4 href=page72.html>72</a>
+<a class=rub4 href=page73.html>73</a>
+<a class=rub4 href=page74.html>74</a>
+<a class=rub4 href=page75.html>75</a>
+<a class=rub4 href=page76.html>76</a>
+<a class=rub4 href=page77.html>77</a>
+<a class=rub4 href=page78.html>78</a>
+<a class=rub4 href=page79.html>79</a>
+<a class=rub4 href=page80.html>80</a>
+<a class=rub4 href=page81.html>81</a>
+<a class=rub4 href=page82.html>82</a>
+<a class=rub4 href=page83.html>83</a>
+<a class=rub4 href=page84.html>84</a>
+<a class=rub4 href=page85.html>85</a>
+<a class=rub4 href=page86.html>86</a>
+<a class=rub4 href=page87.html>87</a>
+<a class=rub4 href=page88.html>88</a>
+<a class=rub4 href=page89.html>89</a>
+<a class=rub4 href=page90.html>90</a>
+<a class=rub4 href=page91.html>91</a>
+<a class=rub4 href=page92.html>92</a>
+<a class=rub4 href=page93.html>93</a>
+<a class=rub4 href=page94.html>94</a>
+<a class=rub4 href=page95.html>95</a>
+<a class=rub4 href=page96.html>96</a>
+<a class=rub4 href=page97.html>97</a>
+<a class=rub4 href=page98.html>98</a>
+<a class=rub4 href=page99.html>99</a>
+<a class=rub4 href=page100.html>100</a>
+<a class=rub4 href=page101.html>101</a>
+<a class=rub4 href=page102.html>102</a>
+<a class=rub4 href=page103.html>103</a>
+<a class=rub4 href=page104.html>104</a>
+<a class=rub4 href=page105.html>105</a>
+<a class=rub4 href=page106.html>106</a>
+<a class=rub4 href=page107.html>107</a>
+<a class=rub4 href=page108.html>108</a>
+<a class=rub4 href=page109.html>109</a>
+<a class=rub4 href=page110.html>110</a>
+<a class=rub4 href=page111.html>111</a>
+<a class=rub4 href=page112.html>112</a>
+<a class=rub4 href=page113.html>113</a>
+<a class=rub4 href=page114.html>114</a>
+<a class=rub4 href=page115.html>115</a>
+<a class=rub4 href=page116.html>116</a>
+<a class=rub4 href=page117.html>117</a>
+<a class=rub4 href=page118.html>118</a>
+<a class=rub4 href=page119.html>119</a>
+<a class=rub4 href=page120.html>120</a>
+<a class=rub4 href=page121.html>121</a>
+<a class=rub4 href=page122.html>122</a>
+<a class=rub4 href=page123.html>123</a>
+<a class=rub4 href=page124.html>124</a>
+<a class=rub4 href=page125.html>125</a>
+<a class=rub4 href=page126.html>126</a>
+<a class=rub4 href=page127.html>127</a>
+<a class=rub4 href=page128.html>128</a>
+<a class=rub4 href=page129.html>129</a>
+<a class=rub4 href=page130.html>130</a>
+<a class=rub4 href=page131.html>131</a>
+<a class=rub4 href=page132.html>132</a>
+<a class=rub4 href=page133.html>133</a>
+<a class=rub4 href=page134.html>134</a>
+<a class=rub4 href=page135.html>135</a>
+<a class=rub4 href=page136.html>136</a>
+<a class=rub4 href=page137.html>137</a>
+<a class=rub4 href=page138.html>138</a>
+<a class=rub4 href=page139.html>139</a>
+<a class=rub4 href=page140.html>140</a>
+<a class=rub4 href=page141.html>141</a>
+<a class=rub4 href=page142.html>142</a>
+<a class=rub4 href=page143.html>143</a>
+<a class=rub4 href=page144.html>144</a>
+<a class=rub4 href=page145.html>145</a>
+<a class=rub4 href=page146.html>146</a>
+<a class=rub4 href=page147.html>147</a>
+<a class=rub4 href=page148.html>148</a>
+<a class=rub4 href=page149.html>149</a>
+<a class=rub4 href=page150.html>150</a>
+<a class=rub4 href=page151.html>151</a>
+<a class=rub5 href=page152.html>152</a>
+<a class=rub4 href=page153.html>153</a>
+<a class=rub4 href=page154.html>154</a>
+<a class=rub4 href=page155.html>155</a>
+<a class=rub4 href=page156.html>156</a>
+<a class=rub4 href=page157.html>157</a>
+<a class=rub4 href=page158.html>158</a>
+<a class=rub4 href=page159.html>159</a>
+<a class=rub4 href=page160.html>160</a>
+<a class=rub4 href=page161.html>161</a>
+<a class=rub4 href=page162.html>162</a>
+<a class=rub4 href=page163.html>163</a>
+</div>
+
+
+</body>
+</html>
